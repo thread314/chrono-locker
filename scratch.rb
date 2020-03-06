@@ -1,16 +1,34 @@
 require 'openssl'
-data = "Very, very confidential data"
 
-cipher = OpenSSL::Cipher::AES.new(256, :CBC)
+# encryption
+cipher = OpenSSL::Cipher.new('aes-256-cbc')
 cipher.encrypt
 key = cipher.random_key
 iv = cipher.random_iv
 
-readable = key
-puts readable
-puts readable.class
-readable = key.unpack('c*')
-puts readable
-readable = readable.to_i(16)
-puts readable
-puts readable.class
+buf = ""
+File.open("file.enc", "wb") do |outf|
+  File.open("file", "rb") do |inf|
+    while inf.read(4096, buf)
+      outf << cipher.update(buf)
+    end
+    outf << cipher.final
+  end
+end
+
+
+# decryption
+cipher = OpenSSL::Cipher.new('aes-256-cbc')
+cipher.decrypt
+cipher.key = key
+cipher.iv = iv # key and iv are the ones from above
+
+buf = ""
+File.open("file.dec", "wb") do |outf|
+  File.open("file.enc", "rb") do |inf|
+    while inf.read(4096, buf)
+      outf << cipher.update(buf)
+    end
+    outf << cipher.final
+  end
+end

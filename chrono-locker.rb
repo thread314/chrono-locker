@@ -8,12 +8,12 @@ iv = cipher.random_iv
 
 encrypted = cipher.update(data) + cipher.final
 puts key
-readable = key.unpack('H*').first
-readable = readable.to_i(16)
+keyasinteger = key.unpack('H*').first
+keyasinteger = keyasinteger.to_i(16)
 
 puts "**************"
 
-decipherkey = readable 
+decipherkey = keyasinteger 
 decipherkey = decipherkey.to_s(16)
 
 if decipherkey.length < 64
