@@ -1,11 +1,45 @@
 require 'openssl'
 
-cipher = OpenSSL::Cipher::AES.new(256, :CBC)
-cipher.encrypt
-$key = cipher.random_key
-iv = cipher.random_iv
+$cipher = OpenSSL::Cipher::AES.new(256, :CBC)
+$cipher.encrypt
+$key = $cipher.random_key
+iv = $cipher.random_iv
 puts "Welcome to Chrono-Locker."
 puts "Please enter the name of the file you would like to encrypt..."
+
+def bin_to_int(binary)
+  binary.unpack("L_").first
+end
+
+def int_to_bin(integer)
+  [integer].pack("L_")
+end
+
+#errorcounter = 0
+#1.times do 
+#  tempkey = $cipher.random_key
+#  if int_to_bin(bin_to_int(tempkey)) == tempkey
+#  else
+#    puts "ERROR - ERROR"
+#    puts "tempkey          - #{tempkey}"
+#    puts tempkey.class
+#    puts "tempkey as int   - #{bin_to_int(tempkey)}"
+#    puts bin_to_int(tempkey).class
+#    puts "changed back     - #{int_to_bin(bin_to_int(tempkey))}"
+#    puts int_to_bin(bin_to_int(tempkey)).class
+#    errorcounter += 1
+#  end
+#end
+#
+#puts errorcounter
+
+#puts $key
+#puts iv
+#puts keyint = bin_to_int($key)
+#puts ivint = bin_to_int(iv)
+#puts int_to_bin(keyint)
+#puts int_to_bin(ivint)
+
 
 def openfile
   $filetoencrypt = gets.chomp
@@ -40,23 +74,38 @@ end
 
 keepkey
 
+def encryptfile
+  encryptedfilename = "#{$filetoencrypt}.enc"
+  output = File.new(encryptedfilename, "w")
+  buf = ""
+  File.open(output, "wb") do |outf|
+    File.open($filetoencrypt, "rb") do |inf|
+      while inf.read(4096, buf)
+        outf << $cipher.update(buf)
+      end
+      outf << $cipher.final
+    end
+  end
+  puts "File has been encrypted and saved as \"#{encryptedfilename}\""
+end
 
-#
-#encrypted = cipher.update(data) + cipher.final
-#puts $key
-#keyasinteger = $key.unpack('H*').first
-#keyasinteger = $keyasinteger.to_i(16)
+encryptfile
+
+def setdecodetime
+  t1 = Time.now
+end
+
+#setdecodetime
+
 #
 #puts "**************"
 #
-#decipherkey = keyasinteger 
-#decipherkey = decipherkey.to_s(16)
 #
-#if decipherkey.length < 64
-#   decipherkey = "0#{decipherkey}"
-#end
 #
-#decipherkey = [decipherkey].pack('H*')
+
+
+
+#
 #puts decipherkey
 #
 #decipher = OpenSSL::Cipher::AES.new(256, :CBC)
