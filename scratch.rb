@@ -7,16 +7,25 @@ iv = $cipher.random_iv
 
 def bin_to_int(binary)
   hexkey = binary.unpack("H*").first
-  intkey = hexkey.to_i(16)
+  return intkey = hexkey.to_i(16)
 end
 
 def int_to_bin(integer)
-  [integer].pack("H*")
+  binkey = integer.to_s(16)
+  if binkey.length < 64
+    binkey = "0#{binkey}"
+  end
+  return [binkey].pack("H*")
 end
 
-puts tempkey = $cipher.random_key
-puts tempkey = bin_to_int(tempkey)
-puts tempkey = int_to_bin(tempkey)
+1000.times do
+  tempkey = $cipher.random_key
+  inttempkey = bin_to_int(tempkey)
+  bintempkey = int_to_bin(inttempkey)
+  if tempkey != bintempkey
+    puts "failure"
+  end
+end
 
 
 #1.times do

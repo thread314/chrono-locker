@@ -8,38 +8,17 @@ puts "Welcome to Chrono-Locker."
 puts "Please enter the name of the file you would like to encrypt..."
 
 def bin_to_int(binary)
-  binary.unpack("L_").first
+  hexkey = binary.unpack("H*").first
+  return hexkey.to_i(16)
 end
 
 def int_to_bin(integer)
-  [integer].pack("L_")
+  binkey = integer.to_s(16)
+  if binkey.length < 64
+    binkey = "0#{binkey}"
+  end
+  return [binkey].pack("H*")
 end
-
-#errorcounter = 0
-#1.times do 
-#  tempkey = $cipher.random_key
-#  if int_to_bin(bin_to_int(tempkey)) == tempkey
-#  else
-#    puts "ERROR - ERROR"
-#    puts "tempkey          - #{tempkey}"
-#    puts tempkey.class
-#    puts "tempkey as int   - #{bin_to_int(tempkey)}"
-#    puts bin_to_int(tempkey).class
-#    puts "changed back     - #{int_to_bin(bin_to_int(tempkey))}"
-#    puts int_to_bin(bin_to_int(tempkey)).class
-#    errorcounter += 1
-#  end
-#end
-#
-#puts errorcounter
-
-#puts $key
-#puts iv
-#puts keyint = bin_to_int($key)
-#puts ivint = bin_to_int(iv)
-#puts int_to_bin(keyint)
-#puts int_to_bin(ivint)
-
 
 def openfile
   $filetoencrypt = gets.chomp
