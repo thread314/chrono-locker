@@ -95,6 +95,7 @@ def setdecodetime
   puts Time.now - t1 
   File.delete("test.dec")
 
+
 end
 
 100.times do
