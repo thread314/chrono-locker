@@ -1,5 +1,6 @@
 require 'openssl'
 
+$singledecodeduration
 $cipher = OpenSSL::Cipher::AES.new(256, :CBC)
 $cipher.encrypt
 $key = $cipher.random_key
@@ -21,7 +22,7 @@ def int_to_bin(integer)
 end
 
 def openfile
-  $filetoencrypt = gets.chomp
+  $filetoencrypt = "file-large" #gets.chomp
   begin
     puts File.open($filetoencrypt, "r")
   rescue
@@ -32,11 +33,9 @@ end
 
 openfile
 
-puts $filetoencrypt
-
 def keepkey 
   puts "Would you like to keep a copy of the key? (y/n)"
-  keepkeyanswer = gets.chomp
+  keepkeyanswer = "y" #gets.chomp
   if keepkeyanswer == "y" 
     keyfile = "#{$filetoencrypt}.key"
     keyfile = File.new("#{$filetoencrypt}.key", "w")
@@ -70,17 +69,13 @@ end
 
 encryptfile
 
-# decryption
-
-def setdecodetime
-
+def measuredecodetime
   $key = $cipher.random_key
   tempcipher = OpenSSL::Cipher.new('aes-256-cbc')
   tempcipher.decrypt
   tempcipher.key = tempcipher.random_key
   tempcipher.iv = $iv 
   tempcipher.padding = 0
-
   t1 = Time.now
   puts "Completing trial decryption to set benchmark for decode time..."
   buf = ""
@@ -92,25 +87,22 @@ def setdecodetime
       outf << tempcipher.final
     end
   end
-  puts Time.now - t1 
+  $singledecodeduration = Time.now - t1 
   File.delete("test.dec")
-
-
+  puts "It took #{$singledecodeduration} seconds to decode the file once."
 end
 
-100.times do
-  setdecodetime
+measuredecodetime
+
+def setdecodecomplexity
+  #puts "How long on average (in seconds) would you like it to take to remove the chrono-lock?"
+  targetunlocktime = 20 #gets.chomp
+  unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
+  searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
+  searchendpoint = searchstartpoint + unlockfieldrange
+  return searchstartpoint, searchendpoint
 end
 
-
-
-#setdecodetime
-
-#
-#puts "**************"
-#
-#
-#
 
 
 
