@@ -3,7 +3,7 @@ require 'openssl'
 $cipher = OpenSSL::Cipher::AES.new(256, :CBC)
 $cipher.encrypt
 $key = $cipher.random_key
-iv = $cipher.random_iv
+$iv = $cipher.random_iv
 puts "Welcome to Chrono-Locker."
 puts "Please enter the name of the file you would like to encrypt..."
 
@@ -70,9 +70,38 @@ end
 
 encryptfile
 
+# decryption
+
 def setdecodetime
+
+  $key = $cipher.random_key
+  tempcipher = OpenSSL::Cipher.new('aes-256-cbc')
+  tempcipher.decrypt
+  tempcipher.key = tempcipher.random_key
+  tempcipher.iv = $iv 
+  tempcipher.padding = 0
+
   t1 = Time.now
+  puts "Completing trial decryption to set benchmark for decode time..."
+  buf = ""
+  File.open("test.dec", "wb") do |outf|
+    File.open("#{$filetoencrypt}.enc", "rb") do |inf|
+      while inf.read(4096, buf)
+        outf << tempcipher.update(buf)
+      end
+      outf << tempcipher.final
+    end
+  end
+  puts Time.now - t1 
+  File.delete("test.dec")
+
 end
+
+100.times do
+  setdecodetime
+end
+
+
 
 #setdecodetime
 

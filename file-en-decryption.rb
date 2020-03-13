@@ -1,10 +1,6 @@
 require 'openssl'
 
 
-
-
-
-
 # encryption
 cipher = OpenSSL::Cipher.new('aes-256-cbc')
 cipher.encrypt
