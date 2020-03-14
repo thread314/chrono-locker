@@ -1,5 +1,5 @@
 require 'openssl'
-
+require 'base64'
 
 # encryption
 cipher = OpenSSL::Cipher.new('aes-256-cbc')
@@ -17,7 +17,6 @@ File.open("output.enc", "wb") do |outf|
     outf << cipher.final
   end
 end
-
 
 # decryption
 cipher = OpenSSL::Cipher.new('aes-256-cbc')

@@ -1,4 +1,5 @@
 require 'openssl'
+require 'base64'
 
 def bin_to_int(binary)
   hexkey = binary.unpack("H*").first
@@ -36,6 +37,7 @@ def keepkey
     keyfile = "#{$filetoencrypt}.key"
     keyfile = File.new("#{$filetoencrypt}.key", "w")
     keyfile.write($key)
+    keyfile.write($iv)
     keyfile.close
     puts "Saving decryption key as #{keyfile}"
   elsif keepkeyanswer == "n"
@@ -91,7 +93,30 @@ def createpartialkey
   searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
   searchendpoint = searchstartpoint + unlockfieldrange
   encryptedfilename = "#{$filetoencrypt}.keypart"
-  output = File.new(encryptedfilename, "w").puts("#{searchstartpoint},#{searchendpoint}")
+  output = File.new(encryptedfilename, "w")
+  output.puts("#{searchstartpoint},#{searchendpoint}")
+  output.puts($iv)
+  output.close
+end
+
+def decrypt
+  puts "Enter the name of the file to decrypt..."
+  filetodecrypt = "file-large.enc"  #gets.chomp
+  puts "Enter the name of the keyfile..."
+  keyfile = "file-large.key"   #gets.chomp
+  cipher = OpenSSL::Cipher.new('aes-256-cbc')
+  cipher.decrypt
+  cipher.key = key
+  cipher.iv = iv # key and iv are the ones from above
+  buf = ""
+  File.open("output", "wb") do |outf|
+    File.open(filetodecrypt, "rb") do |inf|
+      while inf.read(4096, buf)
+        outf << cipher.update(buf)
+      end
+      outf << cipher.final
+    end
+  end
 end
 
 def selecttask
@@ -107,23 +132,11 @@ def selecttask
     createpartialkey
   elsif task == "d"
     puts "You have chosen to decrypt a file."
+    decrypt
   else
     puts "Invalid selection, please try again."
     selecttask
   end
 end
 
-#decryption
-
 selecttask
-#
-#puts decipherkey
-#
-#decipher = OpenSSL::Cipher::AES.new(256, :CBC)
-#decipher.decrypt
-#decipher.$key = decipherkey
-#decipher.iv = iv
-#
-#plain = decipher.update(encrypted) + decipher.final
-#
-#puts data == plain #=> true
