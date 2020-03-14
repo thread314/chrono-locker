@@ -1,13 +1,5 @@
 require 'openssl'
 
-$singledecodeduration
-$cipher = OpenSSL::Cipher::AES.new(256, :CBC)
-$cipher.encrypt
-$key = $cipher.random_key
-$iv = $cipher.random_iv
-puts "Welcome to Chrono-Locker."
-puts "Please enter the name of the file you would like to encrypt..."
-
 def bin_to_int(binary)
   hexkey = binary.unpack("H*").first
   return hexkey.to_i(16)
@@ -22,6 +14,12 @@ def int_to_bin(integer)
 end
 
 def openfile
+  $singledecodeduration
+  $cipher = OpenSSL::Cipher::AES.new(256, :CBC)
+  $cipher.encrypt
+  $key = $cipher.random_key
+  $iv = $cipher.random_iv
+  puts "Please enter the name of the file you would like to encrypt..."
   $filetoencrypt = "file-large" #gets.chomp
   begin
     puts File.open($filetoencrypt, "r")
@@ -30,8 +28,6 @@ def openfile
     openfile
   end
 end
-
-openfile
 
 def keepkey 
   puts "Would you like to keep a copy of the key? (y/n)"
@@ -50,8 +46,6 @@ def keepkey
   end
 end
 
-keepkey
-
 def encryptfile
   encryptedfilename = "#{$filetoencrypt}.enc"
   output = File.new(encryptedfilename, "w")
@@ -66,8 +60,6 @@ def encryptfile
   end
   puts "File has been encrypted and saved as \"#{encryptedfilename}\""
 end
-
-encryptfile
 
 def measuredecodetime
   $key = $cipher.random_key
@@ -92,20 +84,38 @@ def measuredecodetime
   puts "It took #{$singledecodeduration} seconds to decode the file once."
 end
 
-measuredecodetime
-
-def setdecodecomplexity
+def createpartialkey
   #puts "How long on average (in seconds) would you like it to take to remove the chrono-lock?"
   targetunlocktime = 20 #gets.chomp
   unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
   searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
   searchendpoint = searchstartpoint + unlockfieldrange
-  return searchstartpoint, searchendpoint
+  encryptedfilename = "#{$filetoencrypt}.keypart"
+  output = File.new(encryptedfilename, "w").puts("#{searchstartpoint},#{searchendpoint}")
 end
 
+def selecttask
+  puts "Welcome to Chrono-Locker."
+  puts "Would you like to encrypt (e) or decrypt (d) a file today?"
+  task = gets.chomp
+  if task == "e"
+    puts "You have chosen to encrypt a file."
+    openfile
+    keepkey
+    encryptfile
+    measuredecodetime
+    createpartialkey
+  elsif task == "d"
+    puts "You have chosen to decrypt a file."
+  else
+    puts "Invalid selection, please try again."
+    selecttask
+  end
+end
 
+#decryption
 
-
+selecttask
 #
 #puts decipherkey
 #
