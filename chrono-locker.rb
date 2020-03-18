@@ -6,9 +6,19 @@ def bin_to_int(binary)
 end
 
 def int_to_bin(integer)
-  binkey = integer.to_s(16)
+  binkey = integer.to_i.to_s(16)
   if binkey.length < 64
     (64-binkey.length).times do
+      binkey = "0#{binkey}"
+    end
+  end
+  return [binkey].pack("H*")
+end
+
+def iv_int_to_bin(integer)
+  binkey = integer.to_i.to_s(16)
+  if binkey.length < 32
+    (32-binkey.length).times do
       binkey = "0#{binkey}"
     end
   end
@@ -22,23 +32,23 @@ def openfile
   $key = $cipher.random_key
   $iv = $cipher.random_iv
   puts "Please enter the name of the file you would like to encrypt..."
-  $filetoencrypt = "file-large" #gets.chomp
+  $filetoencrypt = gets.chomp
   begin
     puts File.open($filetoencrypt, "r")
   rescue
     puts "Invalid filename"
-    openfile
+    #openfile
   end
 end
 
 def keepkey 
   puts "Would you like to keep a copy of the key? (y/n)"
-  keepkeyanswer = "y" #gets.chomp
+  keepkeyanswer = gets.chomp
   if keepkeyanswer == "y" 
     keyfile = "#{$filetoencrypt}.key"
     keyfile = File.new("#{$filetoencrypt}.key", "w")
-    keyfile.write($key)
-    keyfile.write($iv)
+    keyfile.puts(bin_to_int($key))
+    keyfile.puts(bin_to_int($iv))
     keyfile.close
     puts "Saving decryption key as #{keyfile}"
   elsif keepkeyanswer == "n"
@@ -88,8 +98,8 @@ def measuredecodetime
 end
 
 def createpartialkey
-  #puts "How long on average (in seconds) would you like it to take to remove the chrono-lock?"
-  targetunlocktime = 20 #gets.chomp
+  puts "How long on average (in seconds) would you like it to take to remove the chrono-lock?"
+  targetunlocktime = gets.chomp
   unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
   searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
   searchendpoint = searchstartpoint + unlockfieldrange
@@ -102,13 +112,14 @@ end
 
 def decrypt
   puts "Enter the name of the file to decrypt..."
-  filetodecrypt = "file-large.enc"  #gets.chomp
+  filetodecrypt = gets.chomp
   puts "Enter the name of the keyfile..."
-  keyfile = "file-large.key"   #gets.chomp
+  keyfilename = gets.chomp
+  keyfile = File.readlines(keyfilename)
   cipher = OpenSSL::Cipher.new('aes-256-cbc')
   cipher.decrypt
-  cipher.key = key
-  cipher.iv = iv # key and iv are the ones from above
+  cipher.key = int_to_bin(keyfile[0])
+  cipher.iv = iv_int_to_bin(keyfile[1])
   buf = ""
   File.open("output", "wb") do |outf|
     File.open(filetodecrypt, "rb") do |inf|
@@ -122,8 +133,8 @@ end
 
 def selecttask
   puts "Welcome to Chrono-Locker."
-  puts "Would you like to encrypt (e) or decrypt (d) a file today?"
-  task = e #gets.chomp
+  puts "Would you like to (e)ncrypt or (d)ecrypt a file today?"
+  task = gets.chomp
   if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
