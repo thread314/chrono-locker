@@ -1,5 +1,4 @@
 require 'openssl'
-require 'base64'
 
 def bin_to_int(binary)
   hexkey = binary.unpack("H*").first
@@ -9,7 +8,9 @@ end
 def int_to_bin(integer)
   binkey = integer.to_s(16)
   if binkey.length < 64
-    binkey = "0#{binkey}"
+    (64-binkey.length).times do
+      binkey = "0#{binkey}"
+    end
   end
   return [binkey].pack("H*")
 end
@@ -122,7 +123,7 @@ end
 def selecttask
   puts "Welcome to Chrono-Locker."
   puts "Would you like to encrypt (e) or decrypt (d) a file today?"
-  task = gets.chomp
+  task = e #gets.chomp
   if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
