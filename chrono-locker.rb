@@ -48,6 +48,7 @@ def keepkey
     keyfile = "#{$filetoencrypt}.key"
     keyfile = File.new("#{$filetoencrypt}.key", "w")
     keyfile.puts(bin_to_int($key))
+    puts "this is the kept key #{bin_to_int($key)}"
     keyfile.puts(bin_to_int($iv))
     keyfile.close
     puts "Saving decryption key as #{keyfile}"
@@ -75,7 +76,7 @@ def encryptfile
 end
 
 def measuredecodetime
-  $key = $cipher.random_key
+  #$key = $cipher.random_key
   tempcipher = OpenSSL::Cipher.new('aes-256-cbc')
   tempcipher.decrypt
   tempcipher.key = tempcipher.random_key
@@ -103,6 +104,13 @@ def createpartialkey
   unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
   searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
   searchendpoint = searchstartpoint + unlockfieldrange
+  puts "this is searchstartpoint #{searchstartpoint}"
+  puts "this is searchendpoint #{searchendpoint}"
+  if bin_to_int($key) > searchstartpoint && bin_to_int($key) < searchendpoint
+    puts "the key is in range"
+  else
+    puts "THE KEY IS NOT IN RANGE!!!!!!!!!!!!!!!"
+  end
   encryptedfilename = "#{$filetoencrypt}.keypart"
   output = File.new(encryptedfilename, "w")
   output.puts("#{searchstartpoint},#{searchendpoint}")
@@ -112,11 +120,11 @@ end
 
 def decrypt
   puts "Enter the name of the file to decrypt..."
-  #filetodecrypt = gets.chomp
-  filetodecrypt = "file-large-2.enc" 
+  filetodecrypt = gets.chomp
+  #filetodecrypt = "file-large-2.enc" 
   puts "Enter the name of the keyfile..."
-  #keyfilename = gets.chomp
-  keyfilename = "file-large-2.keypart"
+  keyfilename = gets.chomp
+  #keyfilename = "file-large-2.keypart"
   keyfile = File.readlines(keyfilename)
   cipher = OpenSSL::Cipher.new('aes-256-cbc')
   cipher.decrypt
@@ -125,12 +133,17 @@ def decrypt
     keyrange = keyfile[0].split(",")
     keyrange = (keyrange[0]..keyrange[1])
   else
-    keyrange = (keyrange[0]..keyrange[0])
+    keyrange = (keyfile[0]..keyfile[0])
   end
   remainingattempts = keyrange.last.to_i - keyrange.first.to_i
+  puts keyrange
   keyrange.each do |keyattempt|
     begin
-      cipher.key = int_to_bin(keyfile[0])
+      puts keyattempt.to_s.class
+      puts keyattempt
+      puts keyfile[1].class
+      puts keyfile[1]
+      cipher.key = int_to_bin(keyattempt.to_s)
       cipher.iv = iv_int_to_bin(keyfile[1])
       buf = ""
       File.open("output", "wb") do |outf|
@@ -144,6 +157,7 @@ def decrypt
       puts "decryption successful"
       break
     rescue => error
+      puts error
       puts "Still working on it - #{remainingattempts} attempts remaining"
       remainingattempts -= 1
     end
@@ -153,8 +167,8 @@ end
 def selecttask
   puts "Welcome to Chrono-Locker."
   puts "Would you like to (e)ncrypt or (d)ecrypt a file today?"
-  #task = gets.chomp
-  task = "d"
+  task = gets.chomp
+  #task = "d"
   if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
