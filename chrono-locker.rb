@@ -106,27 +106,46 @@ def createpartialkey
   encryptedfilename = "#{$filetoencrypt}.keypart"
   output = File.new(encryptedfilename, "w")
   output.puts("#{searchstartpoint},#{searchendpoint}")
-  output.puts($iv)
+  output.puts(bin_to_int($iv))
   output.close
 end
 
 def decrypt
   puts "Enter the name of the file to decrypt..."
-  filetodecrypt = gets.chomp
+  #filetodecrypt = gets.chomp
+  filetodecrypt = "file-large-2.enc" 
   puts "Enter the name of the keyfile..."
-  keyfilename = gets.chomp
+  #keyfilename = gets.chomp
+  keyfilename = "file-large-2.keypart"
   keyfile = File.readlines(keyfilename)
   cipher = OpenSSL::Cipher.new('aes-256-cbc')
   cipher.decrypt
-  cipher.key = int_to_bin(keyfile[0])
-  cipher.iv = iv_int_to_bin(keyfile[1])
-  buf = ""
-  File.open("output", "wb") do |outf|
-    File.open(filetodecrypt, "rb") do |inf|
-      while inf.read(4096, buf)
-        outf << cipher.update(buf)
+  keyrange = 0
+  if keyfile[0].include?(",")
+    keyrange = keyfile[0].split(",")
+    keyrange = (keyrange[0]..keyrange[1])
+  else
+    keyrange = (keyrange[0]..keyrange[0])
+  end
+  remainingattempts = keyrange.last.to_i - keyrange.first.to_i
+  keyrange.each do |keyattempt|
+    begin
+      cipher.key = int_to_bin(keyfile[0])
+      cipher.iv = iv_int_to_bin(keyfile[1])
+      buf = ""
+      File.open("output", "wb") do |outf|
+        File.open(filetodecrypt, "rb") do |inf|
+          while inf.read(4096, buf)
+            outf << cipher.update(buf)
+          end
+          outf << cipher.final
+        end
       end
-      outf << cipher.final
+      puts "decryption successful"
+      break
+    rescue => error
+      puts "Still working on it - #{remainingattempts} attempts remaining"
+      remainingattempts -= 1
     end
   end
 end
@@ -134,7 +153,8 @@ end
 def selecttask
   puts "Welcome to Chrono-Locker."
   puts "Would you like to (e)ncrypt or (d)ecrypt a file today?"
-  task = gets.chomp
+  #task = gets.chomp
+  task = "d"
   if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
