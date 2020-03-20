@@ -76,7 +76,6 @@ def encryptfile
 end
 
 def measuredecodetime
-  #$key = $cipher.random_key
   tempcipher = OpenSSL::Cipher.new('aes-256-cbc')
   tempcipher.decrypt
   tempcipher.key = tempcipher.random_key
