@@ -1,11 +1,12 @@
 require 'openssl'
-require 'base64'
 
 # encryption
-cipher = OpenSSL::Cipher.new('aes-256-cbc')
+cipher = OpenSSL::Cipher.new('aes-256-gcm')
 cipher.encrypt
 key = cipher.random_key
 iv = cipher.random_iv
+cipher.auth_data = ""
+auth_tag = cipher.auth_tag 
 
 output = File.new("output.enc", "w")
 buf = ""
@@ -19,10 +20,11 @@ File.open("output.enc", "wb") do |outf|
 end
 
 # decryption
-cipher = OpenSSL::Cipher.new('aes-256-cbc')
+cipher = OpenSSL::Cipher.new('aes-256-gcm')
 cipher.decrypt
 cipher.key = key
-cipher.iv = iv # key and iv are the ones from above
+cipher.iv = iv 
+cipher.auth_data = ""
 
 buf = ""
 File.open("file.dec", "wb") do |outf|

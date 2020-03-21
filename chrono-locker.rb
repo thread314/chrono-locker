@@ -17,8 +17,8 @@ end
 
 def iv_int_to_bin(integer)
   binkey = integer.to_i.to_s(16)
-  if binkey.length < 32
-    (32-binkey.length).times do
+  if binkey.length < 12
+    (12-binkey.length).times do
       binkey = "0#{binkey}"
     end
   end
@@ -27,7 +27,7 @@ end
 
 def openfile
   $singledecodeduration
-  $cipher = OpenSSL::Cipher::AES.new(256, :CBC)
+  $cipher = OpenSSL::Cipher::AES.new(256, :GCM)
   $cipher.encrypt
   $key = $cipher.random_key
   $iv = $cipher.random_iv
@@ -76,25 +76,28 @@ def encryptfile
 end
 
 def measuredecodetime
-  tempcipher = OpenSSL::Cipher.new('aes-256-cbc')
+  tempcipher = OpenSSL::Cipher.new('aes-256-gcm')
   tempcipher.decrypt
   tempcipher.key = tempcipher.random_key
   tempcipher.iv = $iv 
   tempcipher.padding = 0
-  t1 = Time.now
-  puts "Completing trial decryption to set benchmark for decode time..."
-  buf = ""
-  File.open("test.dec", "wb") do |outf|
-    File.open("#{$filetoencrypt}.enc", "rb") do |inf|
-      while inf.read(4096, buf)
-        outf << tempcipher.update(buf)
+  begin
+    t1 = Time.now
+    puts "Completing trial decryption to set benchmark for decode time..."
+    buf = ""
+    File.open("test.dec", "wb") do |outf|
+      File.open("#{$filetoencrypt}.enc", "rb") do |inf|
+        while inf.read(4096, buf)
+          outf << tempcipher.update(buf)
+        end
+        outf << tempcipher.final
       end
-      outf << tempcipher.final
     end
-  end
+  rescue
   $singledecodeduration = Time.now - t1 
   File.delete("test.dec")
   puts "It took #{$singledecodeduration} seconds to decode the file once."
+  end
 end
 
 def createpartialkey
@@ -125,7 +128,7 @@ def decrypt
   keyfilename = gets.chomp
   #keyfilename = "file-large-2.keypart"
   keyfile = File.readlines(keyfilename)
-  cipher = OpenSSL::Cipher.new('aes-256-cbc')
+  cipher = OpenSSL::Cipher.new('aes-256-gcm')
   cipher.decrypt
   keyrange = 0
   if keyfile[0].include?(",")
