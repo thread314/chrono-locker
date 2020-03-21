@@ -27,23 +27,30 @@ end
 
 def openfile
   $singledecodeduration
-  $cipher = OpenSSL::Cipher::AES.new(256, :GCM)
+  $cipher = OpenSSL::Cipher.new('aes-256-gcm')
   $cipher.encrypt
   $key = $cipher.random_key
   $iv = $cipher.random_iv
+  $cipher.auth_data = 'auth_data'
   puts "Please enter the name of the file you would like to encrypt..."
-  $filetoencrypt = gets.chomp
+  $filetoencrypt = "file"
+  #$filetoencrypt = gets.chomp
   begin
     puts File.open($filetoencrypt, "r")
   rescue
     puts "Invalid filename"
     #openfile
   end
+  #  $cipher = OpenSSL::Cipher::AES.new(256, :GCM)
+  #  $cipher.encrypt
+  #  $key = $cipher.random_key
+  #  $iv = $cipher.random_iv
 end
 
 def keepkey 
   puts "Would you like to keep a copy of the key? (y/n)"
-  keepkeyanswer = gets.chomp
+  keepkeyanswer = "y"
+  #keepkeyanswer = gets.chomp
   if keepkeyanswer == "y" 
     keyfile = "#{$filetoencrypt}.key"
     keyfile = File.new("#{$filetoencrypt}.key", "w")
@@ -64,7 +71,7 @@ def encryptfile
   encryptedfilename = "#{$filetoencrypt}.enc"
   output = File.new(encryptedfilename, "w")
   buf = ""
-  File.open(output, "wb") do |outf|
+  File.open("output", "wb") do |outf|
     File.open($filetoencrypt, "rb") do |inf|
       while inf.read(4096, buf)
         outf << $cipher.update(buf)
@@ -72,6 +79,16 @@ def encryptfile
       outf << $cipher.final
     end
   end
+  $auth_tag = $cipher.auth_tag
+  #buf = ""
+  #File.open(output, "wb") do |outf|
+  #  File.open($filetoencrypt, "rb") do |inf|
+  #    while inf.read(4096, buf)
+  #      outf << $cipher.update(buf)
+  #    end
+  #    outf << $cipher.final
+  #  end
+  #end
   puts "File has been encrypted and saved as \"#{encryptedfilename}\""
 end
 
@@ -94,7 +111,7 @@ def measuredecodetime
       end
     end
   rescue
-  $singledecodeduration = Time.now - t1 
+  $singledecodeduration = 1 #Time.now - t1 
   File.delete("test.dec")
   puts "It took #{$singledecodeduration} seconds to decode the file once."
   end
@@ -102,7 +119,8 @@ end
 
 def createpartialkey
   puts "How long on average (in seconds) would you like it to take to remove the chrono-lock?"
-  targetunlocktime = gets.chomp
+  targetunlocktime = "100"
+  #targetunlocktime = gets.chomp
   unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
   searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
   searchendpoint = searchstartpoint + unlockfieldrange
@@ -110,6 +128,7 @@ def createpartialkey
   puts "this is searchendpoint #{searchendpoint}"
   if bin_to_int($key) > searchstartpoint && bin_to_int($key) < searchendpoint
     puts "the key is in range"
+    puts searchendpoint - searchstartpoint 
   else
     puts "THE KEY IS NOT IN RANGE!!!!!!!!!!!!!!!"
   end
@@ -117,17 +136,22 @@ def createpartialkey
   output = File.new(encryptedfilename, "w")
   output.puts("#{searchstartpoint},#{searchendpoint}")
   output.puts(bin_to_int($iv))
+  output.puts($auth_tag)
   output.close
 end
 
 def decrypt
   puts "Enter the name of the file to decrypt..."
-  filetodecrypt = gets.chomp
-  #filetodecrypt = "file-large-2.enc" 
+  #filetodecrypt = gets.chomp
+  filetodecrypt = "file.enc" 
   puts "Enter the name of the keyfile..."
-  keyfilename = gets.chomp
-  #keyfilename = "file-large-2.keypart"
+  #keyfilename = gets.chomp
+  keyfilename = "file.keypart"
   keyfile = File.readlines(keyfilename)
+
+  #decrypt
+  #cipher = OpenSSL::Cipher.new('aes-256-gcm')
+  #cipher.decrypt
   cipher = OpenSSL::Cipher.new('aes-256-gcm')
   cipher.decrypt
   keyrange = 0
@@ -145,8 +169,11 @@ def decrypt
       puts keyattempt
       puts keyfile[1].class
       puts keyfile[1]
+
       cipher.key = int_to_bin(keyattempt.to_s)
       cipher.iv = iv_int_to_bin(keyfile[1])
+      cipher.auth_tag = keyfile[2]
+      cipher.auth_data = 'auth_data'
       buf = ""
       File.open("output", "wb") do |outf|
         File.open(filetodecrypt, "rb") do |inf|
@@ -156,6 +183,17 @@ def decrypt
           outf << cipher.final
         end
       end
+  #    cipher.key = int_to_bin(keyattempt.to_s)
+  #    cipher.iv = iv_int_to_bin(keyfile[1])
+  #    buf = ""
+  #    File.open("output", "wb") do |outf|
+  #      File.open(filetodecrypt, "rb") do |inf|
+  #        while inf.read(4096, buf)
+  #          outf << cipher.update(buf)
+  #        end
+  #        outf << cipher.final
+  #      end
+  #    end
       puts "decryption successful"
       break
     rescue => error
