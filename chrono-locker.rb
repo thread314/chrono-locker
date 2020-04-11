@@ -31,7 +31,7 @@ def openfile
   $cipher.encrypt
   $key = $cipher.random_key
   $iv = $cipher.random_iv
-  $cipher.auth_data = 'auth_data'
+  $cipher.auth_data= 'auth_data'
   puts "Please enter the name of the file you would like to encrypt..."
   $filetoencrypt = "file"
   #$filetoencrypt = gets.chomp
@@ -47,25 +47,26 @@ def openfile
   #  $iv = $cipher.random_iv
 end
 
-def keepkey 
-  puts "Would you like to keep a copy of the key? (y/n)"
-  keepkeyanswer = "y"
-  #keepkeyanswer = gets.chomp
-  if keepkeyanswer == "y" 
-    keyfile = "#{$filetoencrypt}.key"
-    keyfile = File.new("#{$filetoencrypt}.key", "w")
-    keyfile.puts(bin_to_int($key))
-    puts "this is the kept key #{bin_to_int($key)}"
-    keyfile.puts(bin_to_int($iv))
-    keyfile.close
-    puts "Saving decryption key as #{keyfile}"
-  elsif keepkeyanswer == "n"
-    puts "WARNING: the decryption key will not be saved. The only way to decrypt the file will be to brute-force it."
-  else
-    puts "Invalid answer. Please try again."
-    keepkey
-  end
-end
+#def keepkey 
+#  puts "Would you like to keep a copy of the key? (y/n)"
+#  keepkeyanswer = "y"
+#  #keepkeyanswer = gets.chomp
+#  if keepkeyanswer == "y" 
+#    keyfile = "#{$filetoencrypt}.key"
+#    keyfile = File.new("#{$filetoencrypt}.key", "w")
+#    keyfile.puts(bin_to_int($key))
+#    puts "this is the kept key #{bin_to_int($key)}"
+#    keyfile.puts(bin_to_int($iv))
+#    keyfile.puts($auth_tag)
+#    keyfile.close
+#    puts "Saving decryption key as #{keyfile}"
+#  elsif keepkeyanswer == "n"
+#    puts "WARNING: the decryption key will not be saved. The only way to decrypt the file will be to brute-force it."
+#  else
+#    puts "Invalid answer. Please try again."
+#    keepkey
+#  end
+#end
 
 def encryptfile
   encryptedfilename = "#{$filetoencrypt}.enc"
@@ -80,6 +81,16 @@ def encryptfile
     end
   end
   $auth_tag = $cipher.auth_tag
+  puts "This is the original $auth_tag"
+  puts $auth_tag
+  keyfile = "#{$filetoencrypt}.key"
+  keyfile = File.new("#{$filetoencrypt}.key", "w")
+  keyfile.puts(bin_to_int($key))
+  puts "this is the kept key #{bin_to_int($key)}"
+  keyfile.puts(bin_to_int($iv))
+  keyfile.puts($auth_tag)
+  keyfile.close
+  puts "Saving decryption key as #{keyfile}"
   #buf = ""
   #File.open(output, "wb") do |outf|
   #  File.open($filetoencrypt, "rb") do |inf|
@@ -146,14 +157,11 @@ def decrypt
   filetodecrypt = "file.enc" 
   puts "Enter the name of the keyfile..."
   #keyfilename = gets.chomp
-  keyfilename = "file.keypart"
+  keyfilename = "file.key"
   keyfile = File.readlines(keyfilename)
-
   #decrypt
-  #cipher = OpenSSL::Cipher.new('aes-256-gcm')
-  #cipher.decrypt
-  cipher = OpenSSL::Cipher.new('aes-256-gcm')
-  cipher.decrypt
+  decryptcipher = OpenSSL::Cipher.new('aes-256-gcm')
+  decryptcipher.decrypt
   keyrange = 0
   if keyfile[0].include?(",")
     keyrange = keyfile[0].split(",")
@@ -162,45 +170,47 @@ def decrypt
     keyrange = (keyfile[0]..keyfile[0])
   end
   remainingattempts = keyrange.last.to_i - keyrange.first.to_i
-  puts keyrange
+  puts "keyrange --- #{keyrange}"
   keyrange.each do |keyattempt|
-    begin
-      puts keyattempt.to_s.class
-      puts keyattempt
-      puts keyfile[1].class
-      puts keyfile[1]
-
-      cipher.key = int_to_bin(keyattempt.to_s)
-      cipher.iv = iv_int_to_bin(keyfile[1])
-      cipher.auth_tag = keyfile[2]
-      cipher.auth_data = 'auth_data'
+    #begin
+      puts "keyattempt.to_s.class #{keyattempt.to_s.class}"
+      puts "keyattempt --- #{keyattempt}"
+      puts "keyfile[1].class --- #{keyfile[1].class}"
+      puts "keyfile[1] --- #{keyfile[1]}"
+      decryptcipher.key = int_to_bin(keyattempt.to_s)
+      decryptcipher.iv = iv_int_to_bin(keyfile[1])
+      puts "****"
+      puts "keyfile[2] --- #{keyfile[2]}"
+      puts "keyfile[2].class --- #{keyfile[2].class}"
+      decryptcipher.auth_tag = keyfile[2]
+      decryptcipher.auth_data = 'auth_data'
       buf = ""
       File.open("output", "wb") do |outf|
         File.open(filetodecrypt, "rb") do |inf|
           while inf.read(4096, buf)
-            outf << cipher.update(buf)
+            outf << decryptcipher.update(buf)
           end
-          outf << cipher.final
+          outf << decryptcipher.final
         end
       end
-  #    cipher.key = int_to_bin(keyattempt.to_s)
-  #    cipher.iv = iv_int_to_bin(keyfile[1])
+  #    decryptcipher.key = int_to_bin(keyattempt.to_s)
+  #    decryptcipher.iv = iv_int_to_bin(keyfile[1])
   #    buf = ""
   #    File.open("output", "wb") do |outf|
   #      File.open(filetodecrypt, "rb") do |inf|
   #        while inf.read(4096, buf)
-  #          outf << cipher.update(buf)
+  #          outf << decryptcipher.update(buf)
   #        end
-  #        outf << cipher.final
+  #        outf << decryptcipher.final
   #      end
   #    end
       puts "decryption successful"
       break
-    rescue => error
+    #rescue => error
       puts error
       puts "Still working on it - #{remainingattempts} attempts remaining"
       remainingattempts -= 1
-    end
+    #end
   end
 end
 
@@ -212,7 +222,7 @@ def selecttask
   if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
-    keepkey
+    #keepkey
     encryptfile
     measuredecodetime
     createpartialkey
