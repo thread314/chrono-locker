@@ -1,29 +1,5 @@
 require 'openssl'
-
-def bin_to_int(binary)
-  hexkey = binary.unpack("H*").first
-  return hexkey.to_i(16)
-end
-
-def int_to_bin(integer)
-  binkey = integer.to_i.to_s(16)
-  if binkey.length < 64
-    (64-binkey.length).times do
-      binkey = "0#{binkey}"
-    end
-  end
-  return [binkey].pack("H*")
-end
-
-def iv_int_to_bin(integer)
-  binkey = integer.to_i.to_s(16)
-  if binkey.length < 12
-    (12-binkey.length).times do
-      binkey = "0#{binkey}"
-    end
-  end
-  return [binkey].pack("H*")
-end
+require 'base64'
 
 def openfile
   $singledecodeduration
@@ -41,10 +17,6 @@ def openfile
     puts "Invalid filename"
     #openfile
   end
-  #  $cipher = OpenSSL::Cipher::AES.new(256, :GCM)
-  #  $cipher.encrypt
-  #  $key = $cipher.random_key
-  #  $iv = $cipher.random_iv
 end
 
 #def keepkey 
@@ -54,9 +26,9 @@ end
 #  if keepkeyanswer == "y" 
 #    keyfile = "#{$filetoencrypt}.key"
 #    keyfile = File.new("#{$filetoencrypt}.key", "w")
-#    keyfile.puts(bin_to_int($key))
-#    puts "this is the kept key #{bin_to_int($key)}"
-#    keyfile.puts(bin_to_int($iv))
+#    keyfile.puts(Base64.encode64($key))
+#    puts "this is the kept key #{Base64.encode64($key)}"
+#    keyfile.puts(Base64.encode64($iv))
 #    keyfile.puts($auth_tag)
 #    keyfile.close
 #    puts "Saving decryption key as #{keyfile}"
@@ -72,7 +44,7 @@ def encryptfile
   encryptedfilename = "#{$filetoencrypt}.enc"
   output = File.new(encryptedfilename, "w")
   buf = ""
-  File.open("output", "wb") do |outf|
+  File.open(encryptedfilename, "wb") do |outf|
     File.open($filetoencrypt, "rb") do |inf|
       while inf.read(4096, buf)
         outf << $cipher.update(buf)
@@ -85,10 +57,10 @@ def encryptfile
   puts $auth_tag
   keyfile = "#{$filetoencrypt}.key"
   keyfile = File.new("#{$filetoencrypt}.key", "w")
-  keyfile.puts(bin_to_int($key))
-  puts "this is the kept key #{bin_to_int($key)}"
-  keyfile.puts(bin_to_int($iv))
-  keyfile.puts($auth_tag)
+  keyfile.puts(Base64.encode64($key))
+  puts "this is the kept key #{Base64.encode64($key)}"
+  keyfile.puts(Base64.encode64($iv))
+  keyfile.puts(Base64.encode64($auth_tag))
   keyfile.close
   puts "Saving decryption key as #{keyfile}"
   #buf = ""
@@ -133,11 +105,11 @@ def createpartialkey
   targetunlocktime = "100"
   #targetunlocktime = gets.chomp
   unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
-  searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
+  searchstartpoint = rand(unlockfieldrange) + ( Base64.encode64($key) - unlockfieldrange )
   searchendpoint = searchstartpoint + unlockfieldrange
   puts "this is searchstartpoint #{searchstartpoint}"
   puts "this is searchendpoint #{searchendpoint}"
-  if bin_to_int($key) > searchstartpoint && bin_to_int($key) < searchendpoint
+  if Base64.encode64($key) > searchstartpoint && Base64.encode64($key) < searchendpoint
     puts "the key is in range"
     puts searchendpoint - searchstartpoint 
   else
@@ -146,7 +118,7 @@ def createpartialkey
   encryptedfilename = "#{$filetoencrypt}.keypart"
   output = File.new(encryptedfilename, "w")
   output.puts("#{searchstartpoint},#{searchendpoint}")
-  output.puts(bin_to_int($iv))
+  output.puts(Base64.encode64($iv))
   output.puts($auth_tag)
   output.close
 end
@@ -177,12 +149,12 @@ def decrypt
       puts "keyattempt --- #{keyattempt}"
       puts "keyfile[1].class --- #{keyfile[1].class}"
       puts "keyfile[1] --- #{keyfile[1]}"
-      decryptcipher.key = int_to_bin(keyattempt.to_s)
-      decryptcipher.iv = iv_int_to_bin(keyfile[1])
+      decryptcipher.key = Base64.decode64(keyattempt.to_s)
+      decryptcipher.iv = Base64.decode64(keyfile[1])
       puts "****"
       puts "keyfile[2] --- #{keyfile[2]}"
       puts "keyfile[2].class --- #{keyfile[2].class}"
-      decryptcipher.auth_tag = keyfile[2]
+      decryptcipher.auth_tag = Base64.decode64(keyfile[2])
       decryptcipher.auth_data = 'auth_data'
       buf = ""
       File.open("output", "wb") do |outf|
@@ -193,8 +165,8 @@ def decrypt
           outf << decryptcipher.final
         end
       end
-  #    decryptcipher.key = int_to_bin(keyattempt.to_s)
-  #    decryptcipher.iv = iv_int_to_bin(keyfile[1])
+      #    decryptcipher.key = Base64.decode64(keyattempt.to_s)
+      #    decryptcipher.iv = Base64.decode64(keyfile[1])
   #    buf = ""
   #    File.open("output", "wb") do |outf|
   #      File.open(filetodecrypt, "rb") do |inf|
@@ -225,7 +197,7 @@ def selecttask
     #keepkey
     encryptfile
     measuredecodetime
-    createpartialkey
+    #createpartialkey
   elsif task == "d"
     puts "You have chosen to decrypt a file."
     decrypt
