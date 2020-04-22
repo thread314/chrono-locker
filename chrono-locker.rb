@@ -1,8 +1,22 @@
 require 'openssl'
 require 'base64'
 
+def bin_to_int(binary)
+  hexkey = binary.unpack("H*").first
+  return hexkey.to_i(16)
+end
+
+def int_to_bin(integer)
+  binkey = integer.to_i.to_s(16)
+  if binkey.length < 64
+    (64-binkey.length).times do
+      binkey = "0#{binkey}"
+    end
+  end
+  return [binkey].pack("H*")
+end
+
 def openfile
-  $singledecodeduration
   $cipher = OpenSSL::Cipher.new('aes-256-gcm')
   $cipher.encrypt
   $key = $cipher.random_key
@@ -41,7 +55,7 @@ def keepkey
   #keepkeyanswer = gets.chomp
   if keepkeyanswer == "y" 
     keyfile = File.new("#{$filetoencrypt}.key", "w")
-    keyfile.puts(Base64.encode64($key))
+    keyfile.puts(bin_to_int($key))
     keyfile.puts(Base64.encode64($iv))
     keyfile.puts(Base64.encode64($auth_tag))
     keyfile.close
@@ -84,19 +98,13 @@ def createpartialkey
   targetunlocktime = "100"
   #targetunlocktime = gets.chomp
   unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
-  searchstartpoint = rand(unlockfieldrange) + ( Base64.encode64($key) - unlockfieldrange )
+  searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
   searchendpoint = searchstartpoint + unlockfieldrange
-  if Base64.encode64($key) > searchstartpoint && Base64.encode64($key) < searchendpoint
-    puts "the key is in range"
-    puts searchendpoint - searchstartpoint 
-  else
-    puts "THE KEY IS NOT IN RANGE!!!!!!!!!!!!!!!"
-  end
   encryptedfilename = "#{$filetoencrypt}.keypart"
   output = File.new(encryptedfilename, "w")
   output.puts("#{searchstartpoint},#{searchendpoint}")
   output.puts(Base64.encode64($iv))
-  output.puts($auth_tag)
+  output.puts(Base64.encode64($auth_tag))
   output.close
 end
 
@@ -106,7 +114,7 @@ def decrypt
   filetodecrypt = "file.enc" 
   puts "Enter the name of the keyfile..."
   #keyfilename = gets.chomp
-  keyfilename = "file.key"
+  keyfilename = "file.keypart"
   keyfile = File.readlines(keyfilename)
   #decrypt
   decryptcipher = OpenSSL::Cipher.new('aes-256-gcm')
@@ -121,8 +129,8 @@ def decrypt
   remainingattempts = keyrange.last.to_i - keyrange.first.to_i
   puts "keyrange --- #{keyrange}"
   keyrange.each do |keyattempt|
-    #begin
-      decryptcipher.key = Base64.decode64(keyattempt.to_s)
+    begin
+      decryptcipher.key = int_to_bin(keyattempt.to_s)
       decryptcipher.iv = Base64.decode64(keyfile[1])
       decryptcipher.auth_tag = Base64.decode64(keyfile[2])
       decryptcipher.auth_data = 'auth_data'
@@ -135,24 +143,13 @@ def decrypt
           outf << decryptcipher.final
         end
       end
-      #    decryptcipher.key = Base64.decode64(keyattempt.to_s)
-      #    decryptcipher.iv = Base64.decode64(keyfile[1])
-  #    buf = ""
-  #    File.open("output", "wb") do |outf|
-  #      File.open(filetodecrypt, "rb") do |inf|
-  #        while inf.read(4096, buf)
-  #          outf << decryptcipher.update(buf)
-  #        end
-  #        outf << decryptcipher.final
-  #      end
-  #    end
       puts "decryption successful"
       break
-    #rescue => error
+    rescue => error
       puts error
       puts "Still working on it - #{remainingattempts} attempts remaining"
       remainingattempts -= 1
-    #end
+    end
   end
 end
 
@@ -160,7 +157,6 @@ def selecttask
   puts "Welcome to Chrono-Locker."
   puts "Would you like to (e)ncrypt or (d)ecrypt a file today?"
   task = gets.chomp
-  #task = "d"
   if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
