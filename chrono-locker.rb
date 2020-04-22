@@ -35,7 +35,6 @@ end
 
 def encryptfile
   encryptedfilename = "#{$filetoencrypt}.enc"
-  output = File.new(encryptedfilename, "w")
   buf = ""
   File.open(encryptedfilename, "wb") do |outf|
     File.open($filetoencrypt, "rb") do |inf|
@@ -72,7 +71,7 @@ def measuredecodetime
   tempcipher = OpenSSL::Cipher.new('aes-256-gcm')
   tempcipher.decrypt
   tempcipher.key = tempcipher.random_key
-  tempcipher.iv = $iv 
+  tempcipher.iv = tempcipher.random_iv 
   tempcipher.padding = 0
   begin
     t1 = Time.now
@@ -135,7 +134,7 @@ def decrypt
       decryptcipher.auth_tag = Base64.decode64(keyfile[2])
       decryptcipher.auth_data = 'auth_data'
       buf = ""
-      File.open("output", "wb") do |outf|
+      File.open("filetodecrypt", "wb") do |outf|
         File.open(filetodecrypt, "rb") do |inf|
           while inf.read(4096, buf)
             outf << decryptcipher.update(buf)
