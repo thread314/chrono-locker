@@ -19,27 +19,6 @@ def openfile
   end
 end
 
-#def keepkey 
-#  puts "Would you like to keep a copy of the key? (y/n)"
-#  keepkeyanswer = "y"
-#  #keepkeyanswer = gets.chomp
-#  if keepkeyanswer == "y" 
-#    keyfile = "#{$filetoencrypt}.key"
-#    keyfile = File.new("#{$filetoencrypt}.key", "w")
-#    keyfile.puts(Base64.encode64($key))
-#    puts "this is the kept key #{Base64.encode64($key)}"
-#    keyfile.puts(Base64.encode64($iv))
-#    keyfile.puts($auth_tag)
-#    keyfile.close
-#    puts "Saving decryption key as #{keyfile}"
-#  elsif keepkeyanswer == "n"
-#    puts "WARNING: the decryption key will not be saved. The only way to decrypt the file will be to brute-force it."
-#  else
-#    puts "Invalid answer. Please try again."
-#    keepkey
-#  end
-#end
-
 def encryptfile
   encryptedfilename = "#{$filetoencrypt}.enc"
   output = File.new(encryptedfilename, "w")
@@ -53,26 +32,26 @@ def encryptfile
     end
   end
   $auth_tag = $cipher.auth_tag
-  puts "This is the original $auth_tag"
-  puts $auth_tag
-  keyfile = "#{$filetoencrypt}.key"
-  keyfile = File.new("#{$filetoencrypt}.key", "w")
-  keyfile.puts(Base64.encode64($key))
-  puts "this is the kept key #{Base64.encode64($key)}"
-  keyfile.puts(Base64.encode64($iv))
-  keyfile.puts(Base64.encode64($auth_tag))
-  keyfile.close
-  puts "Saving decryption key as #{keyfile}"
-  #buf = ""
-  #File.open(output, "wb") do |outf|
-  #  File.open($filetoencrypt, "rb") do |inf|
-  #    while inf.read(4096, buf)
-  #      outf << $cipher.update(buf)
-  #    end
-  #    outf << $cipher.final
-  #  end
-  #end
   puts "File has been encrypted and saved as \"#{encryptedfilename}\""
+end
+
+def keepkey 
+  puts "Would you like to keep a copy of the key? (y/n)"
+  keepkeyanswer = "y"
+  #keepkeyanswer = gets.chomp
+  if keepkeyanswer == "y" 
+    keyfile = File.new("#{$filetoencrypt}.key", "w")
+    keyfile.puts(Base64.encode64($key))
+    keyfile.puts(Base64.encode64($iv))
+    keyfile.puts(Base64.encode64($auth_tag))
+    keyfile.close
+  keyfile.close
+  elsif keepkeyanswer == "n"
+    puts "WARNING: the decryption key will not be saved. The only way to decrypt the file will be to brute-force it."
+  else
+    puts "Invalid answer. Please try again."
+    keepkey
+  end
 end
 
 def measuredecodetime
@@ -107,8 +86,6 @@ def createpartialkey
   unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
   searchstartpoint = rand(unlockfieldrange) + ( Base64.encode64($key) - unlockfieldrange )
   searchendpoint = searchstartpoint + unlockfieldrange
-  puts "this is searchstartpoint #{searchstartpoint}"
-  puts "this is searchendpoint #{searchendpoint}"
   if Base64.encode64($key) > searchstartpoint && Base64.encode64($key) < searchendpoint
     puts "the key is in range"
     puts searchendpoint - searchstartpoint 
@@ -145,15 +122,8 @@ def decrypt
   puts "keyrange --- #{keyrange}"
   keyrange.each do |keyattempt|
     #begin
-      puts "keyattempt.to_s.class #{keyattempt.to_s.class}"
-      puts "keyattempt --- #{keyattempt}"
-      puts "keyfile[1].class --- #{keyfile[1].class}"
-      puts "keyfile[1] --- #{keyfile[1]}"
       decryptcipher.key = Base64.decode64(keyattempt.to_s)
       decryptcipher.iv = Base64.decode64(keyfile[1])
-      puts "****"
-      puts "keyfile[2] --- #{keyfile[2]}"
-      puts "keyfile[2].class --- #{keyfile[2].class}"
       decryptcipher.auth_tag = Base64.decode64(keyfile[2])
       decryptcipher.auth_data = 'auth_data'
       buf = ""
@@ -194,10 +164,10 @@ def selecttask
   if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
-    #keepkey
     encryptfile
+    keepkey
     measuredecodetime
-    #createpartialkey
+    createpartialkey
   elsif task == "d"
     puts "You have chosen to decrypt a file."
     decrypt
