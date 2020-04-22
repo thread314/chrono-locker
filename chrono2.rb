@@ -1,39 +1,5 @@
 require 'openssl'
-
-def bin_to_int(binary)
-  hexkey = binary.unpack("H*").first
-  return hexkey.to_i(16)
-end
-
-def int_to_bin(integer)
-  binkey = integer.to_i.to_s(16)
-  if binkey.length < 64
-    (64-binkey.length).times do
-      binkey = "0#{binkey}"
-    end
-  end
-  return [binkey].pack("H*")
-end
-
-def iv_int_to_bin(integer)
-  binkey = integer.to_i.to_s(16)
-  if binkey.length < 12
-    (12-binkey.length).times do
-      binkey = "0#{binkey}"
-    end
-  end
-  return [binkey].pack("H*")
-end
-
-def auth_tag_int_to_bin(integer)
-  binkey = integer.to_i.to_s(16)
-  if binkey.length < 16
-    (16-binkey.length).times do
-      binkey = "0#{binkey}"
-    end
-  end
-  return [binkey].pack("H*")
-end
+require 'base64'
 
 def encrypt
   ciphera = OpenSSL::Cipher.new('aes-256-gcm')
@@ -51,21 +17,18 @@ def encrypt
     end
   end
   auth_tag = ciphera.auth_tag
-  key = bin_to_int(key)
-  iv = bin_to_int(iv)
-  auth_tag = bin_to_int(auth_tag)
-  File.open("a-key", "w") {|f| f.write(key) }
-  File.open("a-iv", "w") {|f| f.write(iv) }
-  File.open("a-auth_tag", "w") {|f| f.write(auth_tag) }
+  keyin64 = Base64.encode64(key)
+  ivin64 = Base64.encode64(iv)
+  auth_tagin64 = Base64.encode64(auth_tag)
+  File.open("a-key", "w") {|f| f.write(keyin64) }
+  File.open("a-iv", "w") {|f| f.write(ivin64) }
+  File.open("a-auth_tag", "w") {|f| f.write(auth_tagin64) }
 end
 
 def decrypt
-  key = int_to_bin(File.read("a-key"))
-  puts key
-  iv = iv_int_to_bin(File.read("a-iv"))
-  puts iv
-  auth_tag = auth_tag_int_to_bin(File.read("a-auth_tag"))
-  puts auth_tag
+  key = Base64.decode64(File.read("a-key"))
+  iv = Base64.decode64(File.read("a-iv"))
+  auth_tag = Base64.decode64(File.read("a-auth_tag"))
   cipherb = OpenSSL::Cipher.new('aes-256-gcm')
   cipherb.decrypt
   cipherb.key = key
@@ -83,5 +46,31 @@ def decrypt
   end
 end
 
-encrypt
-decrypt
+10000.times do
+  encrypt 
+  decrypt 
+end
+
+#100.times do
+#  cipher = OpenSSL::Cipher.new('aes-256-gcm')
+#  cipher.encrypt
+#  cipher.random_key
+#  original = cipher.random_iv
+#  cipher.auth_data = 'auth_data'
+#  buf = ""
+#  File.open("gcm-encrypted", "wb") do |outf|
+#    File.open("gcmfile", "rb") do |inf|
+#      while inf.read(4096, buf)
+#        outf << cipher.update(buf)
+#      end
+#      outf << cipher.final
+#    end
+#  end
+#  changed = Base64.encode64(original)
+#  File.open("foo", "w") {|f| f.write(changed) }
+#  readfromfile = File.read("foo")
+#  changed = Base64.decode64(readfromfile)
+#  if original != changed
+#    puts "There was a problem"
+#  end
+#end
