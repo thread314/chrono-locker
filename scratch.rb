@@ -1,1 +1,3 @@
-puts Time.now
+def poop
+  puts "start"
+
