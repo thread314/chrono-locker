@@ -17,7 +17,8 @@ def int_to_bin(integer)
 end
 
 def openfile
-  #$filetoencrypt = 'file'
+  puts "Chrono-Locker is a simple utility that encrypts your files and then saves the decryption key in such a way that you can only recover the file after dedicating a certain amount of time and computing resources to the problem."
+  puts " This utility comes with absolutely no guarantees or liability. When encrypting files there is a very real possibility that the data can be irretrievably lost. USE AT YOUR OWN RISK."
   $filetoencrypt = ""
   until File.file?($filetoencrypt)
     puts "Please enter the name of the file you would like to encrypt..."
@@ -31,7 +32,7 @@ def encryptfile
   $key = cipher.random_key
   $iv = cipher.random_iv
   cipher.auth_data= 'auth_data'
-  encryptedfilename = "#{$filetoencrypt}.enc"
+  encryptedfilename = "#{$filetoencrypt}.encrypted"
   buf = ""
   File.open(encryptedfilename, "wb") do |outf|
     File.open($filetoencrypt, "rb") do |inf|
@@ -47,15 +48,16 @@ end
 
 def keepkey 
   puts "Would you like to keep a copy of the key? (y/n) (So you can bypass the chrono-lock, if needed)"
-  #keepkeyanswer = "y"
   keepkeyanswer = gets.chomp
   if keepkeyanswer == "y" 
-    keyfile = File.new("#{$filetoencrypt}.key", "w")
+    fullkey = "#{$filetoencrypt}.fullkey"
+    keyfile = File.new(fullkey, "w")
     keyfile.puts(bin_to_int($key))
     keyfile.puts(Base64.encode64($iv))
     keyfile.puts(Base64.encode64($auth_tag))
     keyfile.close
-  keyfile.close
+    puts "The plain key has been saved as \"#{fullkey}\"."
+    keyfile.close
   elsif keepkeyanswer == "n"
     puts "WARNING: the decryption key will not be saved. The only way to decrypt the file will be to brute-force it."
   else
@@ -76,7 +78,7 @@ def measuredecodetime
       t1 = Time.now
       buf = ""
       File.open("temp.dec", "wb") do |outf|
-        File.open("#{$filetoencrypt}.enc", "rb") do |inf|
+        File.open("#{$filetoencrypt}.encrypted", "rb") do |inf|
           while inf.read(4096, buf)
             outf << tempcipher.update(buf)
           end
@@ -95,21 +97,17 @@ def createpartialkey
   begin
     puts "How long on average (in seconds) would you like it to take to remove the chrono-lock?"
     Float targetunlocktime = gets.chomp
-    #targetunlocktime = "1"
     unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
     searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
     searchendpoint = searchstartpoint + unlockfieldrange
-    encryptedfilename = "#{$filetoencrypt}.keypart"
-    output = File.new(encryptedfilename, "w")
+    partialkey = "#{$filetoencrypt}.partialkey"
+    output = File.new(partialkey, "w")
     output.puts("#{searchstartpoint},#{searchendpoint}")
     output.puts(Base64.encode64($iv))
     output.puts(Base64.encode64($auth_tag))
     output.close
-    #fifthpercentile = 0.05 * unlockfieldrange * $singledecodeduration 
-    #ninetyfifthpercentile = 0.95 * unlockfieldrange * $singledecodeduration 
-    puts "The file has been encrypted. Using #{encryptedfilename} and this machine, it should take an average #{targetunlocktime} seconds to decrypt the file." 
-    #puts "Note that there is *significant* variance in this estimate. In 5 percent of cases it will take less than #{fifthpercentile} seconds to decrypt. In another 5 percent of cases it will take longer than #{ninetyfifthpercentile} seconds to decrypt." 
-    puts "Note that there will be *significant* variance in this estimate, which will be greatly impacted by computing resources and even luck. This tool is provided with no guarantees and no responsibility."
+    puts "Using \"#{partialkey}\" and this machine, it should take an average #{targetunlocktime} seconds to decrypt the file." 
+    puts "Note that there will be *significant* variance in this estimate, which will be greatly impacted by computing resources and even luck."
   rescue
     puts "Not a valid selection"
     retry
@@ -118,13 +116,11 @@ end
 
 def decrypt
   filetodecrypt = ""
-  #filetodecrypt = "file.enc" 
   until File.file?(filetodecrypt)
     puts "Enter the name of the file to decrypt..."
     filetodecrypt = gets.chomp
   end
   keyfilename = ""
-  #keyfilename = "file.keypart"
   until File.file?(keyfilename)
     puts "Enter the name of the keyfile..."
      keyfilename = gets.chomp
@@ -158,7 +154,7 @@ def decrypt
           outf << decryptcipher.final
         end
       end
-      puts "decryption successful"
+      puts "File has successfully been decrypted (\"file.decrypted\")"
       puts "It took #{Time.now - starttime} seconds to decrypt."
       break
     rescue => error
@@ -175,7 +171,6 @@ def selecttask
   puts "Welcome to Chrono-Locker."
   puts "Would you like to (e)ncrypt or (d)ecrypt a file today?"
   task = gets.chomp
-  #task = "e"
   if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
