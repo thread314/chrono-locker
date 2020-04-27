@@ -72,29 +72,32 @@ def measuredecodetime
   tempcipher.decrypt
   tempcipher.key = tempcipher.random_key
   tempcipher.iv = tempcipher.random_iv 
-  tempcipher.padding = 0
-  begin
-    t1 = Time.now
-    puts "Completing trial decryption to set benchmark for decode time..."
-    buf = ""
-    File.open("test.dec", "wb") do |outf|
-      File.open("#{$filetoencrypt}.enc", "rb") do |inf|
-        while inf.read(4096, buf)
-          outf << tempcipher.update(buf)
+  #tempcipher.padding = 0
+  decodetimes = []
+  10.times do
+    begin
+      t1 = Time.now
+      puts "Completing trial decryption to set benchmark for decode time..."
+      buf = ""
+      File.open("test.dec", "wb") do |outf|
+        File.open("#{$filetoencrypt}.enc", "rb") do |inf|
+          while inf.read(4096, buf)
+            outf << tempcipher.update(buf)
+          end
+          outf << tempcipher.final
         end
-        outf << tempcipher.final
       end
+    rescue
+      decodetimes.push(Time.now - t1)
+      File.delete("test.dec")
     end
-  rescue
-  $singledecodeduration = 1 #Time.now - t1 
-  File.delete("test.dec")
-  puts "It took #{$singledecodeduration} seconds to decode the file once."
   end
+  $singledecodeduration = decodetimes.inject{ |sum, element| sum + element }.to_f / decodetimes.size
 end
 
 def createpartialkey
   puts "How long on average (in seconds) would you like it to take to remove the chrono-lock?"
-  targetunlocktime = "100"
+  targetunlocktime = "10"
   #targetunlocktime = gets.chomp
   unlockfieldrange = ( 2 * ( targetunlocktime.to_f / $singledecodeduration ) ) .to_i
   searchstartpoint = rand(unlockfieldrange) + ( bin_to_int($key) - unlockfieldrange )
@@ -105,6 +108,11 @@ def createpartialkey
   output.puts(Base64.encode64($iv))
   output.puts(Base64.encode64($auth_tag))
   output.close
+  fifthpercentile = 0.05 * unlockfieldrange * $singledecodeduration 
+  ninetyfifthpercentile = 0.95 * unlockfieldrange * $singledecodeduration 
+  puts "The file has been encrypted and using #{encryptedfilename} and this machine, it should take an estimated #{targetunlocktime} seconds to decrypt the file." 
+  puts "Note that there is significant variance in this estimate. In 5 percent of cases it will take less than #{fifthpercentile} seconds to decrypt. In another 5 percent of cases it will take longer than #{ninetyfifthpercentile} seconds to decrypt." 
+  puts "Note that this estimate will also be affected by the amount of computing resources dedicated to decypting it. Dedicating more powerful/mutliple machines to the operation will great affect the decryption time."
 end
 
 def decrypt
@@ -125,8 +133,10 @@ def decrypt
   else
     keyrange = (keyfile[0]..keyfile[0])
   end
-  remainingattempts = keyrange.last.to_i - keyrange.first.to_i
-  puts "keyrange --- #{keyrange}"
+  keysexplored = 0
+  starttime = Time.now
+  keyspace = keyrange.end.to_i - keyrange.begin.to_i
+  percentcomplete = 0
   keyrange.each do |keyattempt|
     begin
       decryptcipher.key = int_to_bin(keyattempt.to_s)
@@ -134,7 +144,7 @@ def decrypt
       decryptcipher.auth_tag = Base64.decode64(keyfile[2])
       decryptcipher.auth_data = 'auth_data'
       buf = ""
-      File.open("filetodecrypt", "wb") do |outf|
+      File.open("file.decrypted", "wb") do |outf|
         File.open(filetodecrypt, "rb") do |inf|
           while inf.read(4096, buf)
             outf << decryptcipher.update(buf)
@@ -143,11 +153,19 @@ def decrypt
         end
       end
       puts "decryption successful"
+      puts "It took #{Time.now - starttime} seconds to decrypt."
+      #Saving decrypt time to file
+      f = File.open('decrypttimes', 'a')
+      f.write("#{(Time.now - starttime)} \t\t\t\t #{percentcomplete} \n")
+      f.close
+      #Finished saving decrypt time to file
       break
     rescue => error
-      puts error
-      puts "Still working on it - #{remainingattempts} attempts remaining"
-      remainingattempts -= 1
+      keysexplored += 1
+      unless percentcomplete == ((keysexplored.to_f / keyspace.to_f) * 100).to_i
+        puts "#{percentcomplete}% of the key space has been explored"
+      end
+      percentcomplete = ((keysexplored.to_f / keyspace.to_f) * 100).to_i
     end
   end
 end
@@ -155,21 +173,24 @@ end
 def selecttask
   puts "Welcome to Chrono-Locker."
   puts "Would you like to (e)ncrypt or (d)ecrypt a file today?"
-  task = gets.chomp
-  if task == "e"
+  #task = gets.chomp
+  task = "e"
+  #if task == "e"
     puts "You have chosen to encrypt a file."
     openfile
     encryptfile
     keepkey
     measuredecodetime
     createpartialkey
-  elsif task == "d"
+  #elsif task == "d"
     puts "You have chosen to decrypt a file."
     decrypt
-  else
-    puts "Invalid selection, please try again."
-    selecttask
-  end
+  #else
+    #puts "Invalid selection, please try again."
+    #selecttask
+  #end
 end
 
-selecttask
+20.times do
+  selecttask
+end
