@@ -15,7 +15,7 @@ This is a very simple app and is by no means the optimal implementation, but it 
 * Instead of saving just the decryption key, saving a range of values that contains the key at some random point. 
 * When trying to decrypt the file, the utility brute-forces this range of values, until it finds the correct key and decrypts the file. 
 
-### !!!WARNING!!!
+### WARNING
 
 * This utility comes with absolutely no guarantees or liability. When encrypting files there is a very real possibility that the data can be irretrievably lost. USE AT YOUR OWN RISK. 
 * By nature of how the ap works, there will be *significant* variance in the real-world times it takes to decrypt a file. This is because key will be contained at some random point in the keyspace and the app is simply cycling through this keyspace. By chance the key could be very early or late in the keyspace, which will greatly effect the decryption time. 
