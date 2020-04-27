@@ -65,17 +65,17 @@ def keepkey
 end
 
 def measuredecodetime
-  tempcipher = OpenSSL::Cipher.new('aes-256-gcm')
-  tempcipher.decrypt
-  tempcipher.iv = tempcipher.random_iv 
   decodetimes = []
   puts "Completing trial decryption to set benchmark for decode time..."
   10.times do
     begin
+      tempcipher = OpenSSL::Cipher.new('aes-256-gcm')
+      tempcipher.decrypt
+      tempcipher.iv = tempcipher.random_iv 
       tempcipher.key = tempcipher.random_key
       t1 = Time.now
       buf = ""
-      File.open("test.dec", "wb") do |outf|
+      File.open("temp.dec", "wb") do |outf|
         File.open("#{$filetoencrypt}.enc", "rb") do |inf|
           while inf.read(4096, buf)
             outf << tempcipher.update(buf)
@@ -85,19 +85,10 @@ def measuredecodetime
       end
     rescue
       decodetimes.push(Time.now - t1)
-      File.delete("test.dec")
+      File.delete("temp.dec")
     end
   end
-
-  #array = [2,3,3,3,3]
-  #$singledecodeduration = array.inject { |sum, element| sum + element}
-  #puts $singledecodeduration
-
   $singledecodeduration = decodetimes.inject{ |sum, element| sum + element }.to_f / decodetimes.size
-  puts decodetimes
-  puts decodetimes.size
-  puts "average"
-  puts $singledecodeduration
 end
 
 def createpartialkey
@@ -169,11 +160,6 @@ def decrypt
       end
       puts "decryption successful"
       puts "It took #{Time.now - starttime} seconds to decrypt."
-      #Saving decrypt time to file
-      f = File.open('decrypttimes', 'a')
-      f.write("#{(Time.now - starttime)} \t\t\t\t #{percentcomplete} \n")
-      f.close
-      #Finished saving decrypt time to file
       break
     rescue => error
       keysexplored += 1
